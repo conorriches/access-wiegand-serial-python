@@ -1,0 +1,13 @@
+members:
+  apikey: 123-123-123-123
+  querykey: 123123123123
+mqtt:
+  name: alfred_outer
+  server: acidburn
+serial:
+  in:
+    port: /dev/ttyUSB0
+    baud: 115200
+  out:
+    port: /dev/ttyUSB1
+    baud: 115200
