@@ -10,7 +10,7 @@ with open('config.yaml') as config_f:
 api_key = config['members']['apikey']
 query_key = config['members']['querykey']
 
-CSV_URL = 'https://people.sc.fsu.edu/~jburkardt/data/csv/faithful.csv'
+CSV_URL = "https://members.hacman.org.uk/query2.php?key=%s" % query_key
 
 
 def send_heartbeat():
@@ -39,7 +39,7 @@ def main():
 
             with open('members.csv', 'w') as f:
                 for item in member_list:
-                    f.write("%s,%s,%s\n" % (item[0], item[1], item[2]))
+                    f.write("%s,%s\n" % (item[0], item[1]))
     except:
         print("Failed!")
         GPIO.output(led_error_pin, GPIO.HIGH)
