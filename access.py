@@ -3,9 +3,10 @@ from datetime import date, datetime as dt
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import requests
-from pathlib import Path
+import os.path
 import RPi.GPIO as GPIO
 from io import BytesIO
+from pathlib install Path
 import serial
 import time
 import yaml
@@ -14,9 +15,9 @@ import yaml
 readerError = 0
 
 # GPIO setup
-errorLed = 13
-exitBtn = 2
-exitRelay = 6
+errorLed = 11
+exitBtn = 13
+exitRelay = 15
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(errorLed, GPIO.OUT)
@@ -154,10 +155,10 @@ def main():
                     if validateReader(line) : continue # Check the reader is OK
                     valid, user = validateFob(line) # Check the fob is known
                     if(valid):
-                        GPIO.output(exitRelay, GPIO.HIGH)
+                        GPIO.output(exitRelay, GPIO.LOW)
                         ser1.write(b'1')
                         time.sleep(0.5)
-                        GPIO.output(exitRelay, GPIO.LOW)
+                        GPIO.output(exitRelay, GPIO.HIGH)
                         print(user, "entered")
                         debugLog.info(
                             "RFID FOB SCAN: %s scanned %s with fob %s", user, "IN", line

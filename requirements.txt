@@ -9,7 +9,7 @@ ecdsa==0.15
 esptool==2.8
 gpiozero==1.6.2
 idna==2.10
-numpy==1.20.2
+numpy==1.16.0
 pandas==1.2.4
 Pillow==5.4.1
 pyaes==1.6.1
