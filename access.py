@@ -1,12 +1,17 @@
-import csv
+import unicodecsv as csv
 from datetime import date, datetime as dt
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import requests
 from pathlib import Path
 import RPi.GPIO as GPIO
+from io import BytesIO
 import serial
 import time
 import yaml
+
+# Flags
+readerError = 0
 
 # GPIO setup
 errorLed = 13
@@ -25,11 +30,11 @@ debugLog = logging.getLogger('debug')
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-errorHandler = logging.FileHandler("logs/error.log")
+errorHandler = logging.handlers.TimedRotatingFileHandler("logs/error.log", encoding="utf-8", when='d', interval=1, backupCount=21)
 errorHandler.setFormatter(formatter)
 errorLog.addHandler(errorHandler)
 
-debugHandler = logging.FileHandler("logs/debug.log")
+debugHandler = logging.handlers.TimedRotatingFileHandler("logs/debug.log", encoding="utf-8", when='d', interval=1, backupCount=21)
 debugHandler.setFormatter(formatter)
 debugLog.addHandler(debugHandler)
 debugLog.setLevel(logging.DEBUG)
@@ -54,12 +59,12 @@ def send_heartbeat():
             "ApiKey": api_key
         }
         r = requests.post(url=url, headers=headers)
-        debugLog.info(r.status_code)
-        if r.status_code != 200:
-            raise Exception("Heartbeat status code wasn't 200")
+        status = r.status_code
+        if status != 200:
+            raise Exception("Heartbeat status code was %s", status)
         debugLog.info("Sent heartbeat")
-    except:
-        errorLog.error("Couldn't sent heartbeat")
+    except Exception as e:
+        errorLog.error("Couldn't sent heartbeat: %s", e)
 
 
 def disconnectSerial():
@@ -96,12 +101,13 @@ def connectSerial():
 
 
 def report():
-    debugLog.info("Sending report")
     send_heartbeat()
     if (ser1_cfg != False and ser1 == False):
         errorLog.error("No serial device SER1")
     if (ser2_cfg != False and ser2 == False):
         errorLog.error("No serial device SER2")
+    if(readerError > 0):
+        errorLog.error("Reader error, reader not connected to Arduino")
 
 
 def checkErrors():
@@ -113,8 +119,8 @@ def checkErrors():
 
 
 def validateFob(fobId):
-    with open('members.csv', newline='') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
+    with open('members.csv', 'rb') as csvfile:
+        reader = csv.reader(csvfile, encoding='utf-8')
         mydict = {rows[0]: rows[1] for rows in reader}
         valid = fobId in mydict
         debugLog.info("Validation of fob ID %s was %s", fobId, valid)
@@ -122,6 +128,16 @@ def validateFob(fobId):
             return valid, mydict.get(fobId)
     return False, False
 
+def validateReader(input):
+    global readerError
+    if(input == "READER_OK"):
+        readerError = 0
+        return True
+    elif(input == "READER_ERROR"):
+        readerError = 1
+        return True
+    else:
+        return False
 
 def main():
     global ser1, ser2
@@ -135,7 +151,8 @@ def main():
                 if ser1.in_waiting > 0:
                     line = ser1.readline().decode('utf-8').rstrip()
                     debugLog.info("Data on Ser1: %s", line)
-                    valid, user = validateFob(line)
+                    if validateReader(line) : continue # Check the reader is OK
+                    valid, user = validateFob(line) # Check the fob is known
                     if(valid):
                         GPIO.output(exitRelay, GPIO.HIGH)
                         ser1.write(b'1')
@@ -152,7 +169,8 @@ def main():
                 if ser2.in_waiting > 0:
                     line = ser2.readline().decode('utf-8').rstrip()
                     debugLog.info("Data on Ser2: %s", line)
-                    valid, user = validateFob(line)
+                    if validateReader(line) : continue # Check the reader is OK
+                    valid, user = validateFob(line)  # Check the fob is known
                     if(valid):
                         GPIO.output(exitRelay, GPIO.HIGH)
                         time.sleep(0.5)
